@@ -1,10 +1,8 @@
-DevOps Practicals Q1 to Q5 (Windows)
-Final steps as performed, including the fixes we needed on the way. Use PowerShell (normal, not admin) unless stated. If your prompt shows C:\WINDOWS\System32, run cd ~ first. Screenshot after every step.
-Before you start
-• Install: Git, JDK 21, Maven, Docker Desktop, Jenkins. Check with git --version, java -version, mvn -version, docker --version.
-• Jenkins and the Docker nginx (Q4) both use port 8080. Stop Jenkins before Q4 with net stop jenkins (admin Command Prompt), start it again with net start jenkins.
-• Replace YourName, you@example.com and YOUR_USER with your real values.
-Q1. Git (30 marks)
+<xml>
+<body>
+<head>
+
+. Git 
 Use Git Bash or PowerShell.
 1. Initialize and configure (4)
 mkdir student-management
