@@ -189,3 +189,82 @@ Quick troubleshooting
 • Docker cannot connect: open Docker Desktop and wait for Engine running.
 • Container name already in use: docker rm -f web1 web2.
 • Jenkins job fails on Maven: use full paths in the build step (Q2) or the environment block (Q3).
+Kubernetes Basics (Windows, minikube)
+
+Use a normal PowerShell with Docker Desktop on Engine running. If your prompt shows System32, run cd ~ first.
+
+Step 0. Install kubectl and minikube (once)
+powershell
+winget install Kubernetes.kubectl
+winget install Kubernetes.minikube
+
+Close PowerShell, open a new one, and check:
+
+powershell
+kubectl version --client
+minikube version
+Step 1. Start the cluster and check status (3 marks)
+powershell
+minikube start --driver=docker
+kubectl cluster-info
+kubectl get nodes
+
+The first start takes a few minutes. The node should show Ready.
+
+Step 2. Create a Pod (5 marks)
+powershell
+kubectl run my-pod --image=nginx
+kubectl get pods
+
+Run kubectl get pods again until my-pod shows Running.
+
+Step 3. Create the Deployment from YAML (8 marks)
+powershell
+cd ~
+@'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+'@ | Set-Content deployment.yaml
+
+kubectl apply -f deployment.yaml
+kubectl get deployments
+
+Screenshot the file (type deployment.yaml) and the created message.
+
+Step 4. Create a NodePort Service and open it (8 marks)
+powershell
+kubectl expose deployment web-deployment --type=NodePort --port=80
+kubectl get svc
+
+Note the NodePort in the output (for example 80:31234/TCP). Then:
+
+powershell
+minikube service web-deployment --url
+
+Copy the printed URL (for example http://127.0.0.1:52341) into the browser. You should see “Welcome to nginx!”.
+
+Keep this PowerShell window open. On Windows with the Docker driver, closing it stops the tunnel. Open a second PowerShell window for Step 5.
+
+Step 5. Show the outputs (6 marks)
+powershell
+kubectl get pods
+kubectl get deployments
+kubectl get services
+kubectl describe pod my-pod
+
+Screenshot each output.
