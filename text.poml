@@ -190,6 +190,81 @@ Quick troubleshooting
 • Container name already in use: docker rm -f web1 web2.
 • Jenkins job fails on Maven: use full paths in the build step (Q2) or the environment block (Q3).
 Kubernetes Basics (Windows, minikube)
+Step 0. Install Ubuntu (once)
+Open PowerShell as Administrator and run wsl --install -d Ubuntu.
+Restart the PC if it asks, then open Ubuntu from the Start menu and create a Linux username and password.
+Turn on systemd so Apache can start as a service. In Ubuntu:
+bash
+echo -e "[boot]\nsystemd=true" | sudo tee /etc/wsl.conf
+In PowerShell run wsl --shutdown, then reopen Ubuntu.
+
+Run all the commands below inside the Ubuntu terminal, in your Linux home folder (cd ~), not in /mnt/c.
+
+Step 1. Install Ansible and verify (4 marks)
+bash
+sudo apt update
+sudo apt install -y ansible
+ansible --version
+
+Screenshot the version output.
+
+Step 2. Create the inventory and test the connection (5 marks)
+
+Route B (one PC)
+
+bash
+mkdir ~/ansible && cd ~/ansible
+printf "[webservers]\nlocalhost ansible_connection=local\n" > inventory.ini
+ansible all -i inventory.ini -m ping
+
+Route A (2 servers)
+
+bash
+mkdir ~/ansible && cd ~/ansible
+ssh-keygen                      # press Enter 3 times
+ssh-copy-id user@NODE1_IP
+ssh-copy-id user@NODE2_IP
+printf "[webservers]\nNODE1_IP ansible_user=user\nNODE2_IP ansible_user=user\n" > inventory.ini
+ansible all -i inventory.ini -m ping
+
+Screenshot it. You want "ping": "pong" for each host.
+
+Step 3. Write the playbook (12 marks)
+bash
+echo "<h1>Hello from Ansible</h1>" > index.html
+
+cat > install-packages.yml <<'EOF'
+- hosts: webservers
+  become: yes
+  tasks:
+    - apt:
+        update_cache: yes
+    - apt:
+        name: [apache2, curl, git, vim]
+        state: present
+    - service:
+        name: apache2
+        state: started
+        enabled: yes
+    - copy:
+        src: index.html
+        dest: /var/www/html/index.html
+EOF
+
+Screenshot the file with cat install-packages.yml.
+
+Step 4. Run the playbook (5 marks)
+bash
+ansible-playbook -i inventory.ini install-packages.yml --ask-become-pass
+
+Enter your Linux password at the BECOME prompt. The recap should show failed=0. Screenshot it.
+
+Step 5. Verify in the browser and prove idempotency (4 marks)
+Open http://localhost in your Windows browser (Route A: http://NODE1_IP). You should see “Hello from Ansible”. Screenshot it.
+Run the playbook again:
+bash
+ansible-playbook -i inventory.ini install-packages.yml --ask-become-pass
+The recap should show changed=0. Screenshot it. This proves idempotency.
 
 Use a normal PowerShell with Docker Desktop on Engine running. If your prompt shows System32, run cd ~ first.
 
@@ -268,3 +343,229 @@ kubectl get services
 kubectl describe pod my-pod
 
 Screenshot each output.
+
+Q8. Scaling, Rolling Updates and Rollbacks (Windows)
+
+This uses the same minikube cluster as Q7. Use PowerShell with Docker Desktop running.
+
+Step 0. Check the cluster and create my-app
+powershell
+minikube status
+kubectl get deployments
+
+If minikube is stopped, run minikube start --driver=docker. The question says my-app is already running, but if it’s missing, create it:
+
+powershell
+kubectl create deployment my-app --image=nginx:1.25 --replicas=2
+kubectl get pods
+
+Wait until both pods show Running.
+
+Step 1. Scale from 2 to 5 replicas (5 marks)
+powershell
+kubectl scale deployment my-app --replicas=5
+kubectl get pods
+kubectl get deployment my-app
+
+The deployment should show 5/5 ready. Screenshot it.
+
+Step 2. Rolling update to nginx:1.27 (8 marks)
+powershell
+kubectl set image deployment/my-app nginx=nginx:1.27
+
+Screenshot the output: deployment.apps/my-app image updated.
+
+Step 3. Monitor the rollout (5 marks)
+powershell
+kubectl rollout status deployment/my-app
+kubectl get pods -w
+
+The status command ends with successfully rolled out. Press Ctrl+C to stop the watch. To catch pods changing live, start kubectl get pods -w in a second PowerShell window just before Step 2.
+
+Step 4. Check the rollout history (4 marks)
+powershell
+kubectl rollout history deployment/my-app
+
+You should see revisions 1 and 2.
+
+Step 5. Roll back and verify (8 marks)
+powershell
+kubectl rollout undo deployment/my-app
+kubectl rollout status deployment/my-app
+kubectl describe deployment my-app | Select-String Image
+
+The last line should show Image: nginx:1.25. Screenshot it. PowerShell has no grep, so Select-String does the same job.
+Q9. Centralized Logging with ELK (Windows)
+
+ELK needs about 4 GB of free RAM. Stop minikube first with minikube stop, and close heavy apps. Use a normal PowerShell with Docker Desktop on Engine running.
+
+Step 1. Start Elasticsearch, Logstash and Kibana (8 marks)
+powershell
+wsl -d docker-desktop sysctl -w vm.max_map_count=262144
+cd ~
+mkdir elk
+cd elk
+mkdir logs
+
+docker-compose.yml
+
+powershell
+@'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./logs:/logs
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+'@ | Set-Content docker-compose.yml
+
+Create the Logstash config (Step 2) and the sample logs (Step 3) before starting, then run:
+
+powershell
+docker compose up -d
+docker compose ps
+
+Wait 1 to 2 minutes, then verify Elasticsearch on port 9200:
+
+powershell
+curl.exe localhost:9200
+
+Screenshot the JSON output. You can also open http://localhost:9200 in the browser.
+
+Step 2. Configure the Logstash pipeline (8 marks)
+powershell
+@'
+input {
+  beats { port => 5044 }
+  file { path => "/logs/access.log" start_position => "beginning" sincedb_path => "/dev/null" }
+}
+filter {
+  grok { match => { "message" => "%{COMMONAPACHELOG}" } ecs_compatibility => disabled }
+}
+output {
+  elasticsearch { hosts => ["http://elasticsearch:9200"] index => "logs-%{+YYYY.MM.dd}" }
+}
+'@ | Set-Content logstash.conf
+
+The pipeline takes input from Beats on port 5044 (and the log file), parses each line with grok, and sends the output to Elasticsearch. Screenshot the file with type logstash.conf.
+
+Step 3. Generate sample logs (4 marks)
+powershell
+@'
+127.0.0.1 - - [17/Nov/2026:10:00:01 +0000] "GET /index.html HTTP/1.1" 200 1024
+127.0.0.1 - - [17/Nov/2026:10:00:02 +0000] "GET /login HTTP/1.1" 500 512
+127.0.0.1 - - [17/Nov/2026:10:00:03 +0000] "GET /home HTTP/1.1" 200 2048
+127.0.0.1 - - [17/Nov/2026:10:00:04 +0000] "POST /pay HTTP/1.1" 500 256
+127.0.0.1 - - [17/Nov/2026:10:00:05 +0000] "GET /about HTTP/1.1" 200 900
+'@ | Set-Content logs\access.log
+
+After Logstash has started, confirm the data arrived:
+
+powershell
+curl.exe "localhost:9200/_cat/indices?v"
+
+You should see an index like logs-2026.11.18 with 5 documents.
+
+Step 4. Create the data view in Kibana (5 marks)
+Open http://localhost:5601 (the first load can take a minute).
+Open the menu, then Stack Management, then Data Views.
+Click Create data view.
+Name and index pattern: logs-*. Timestamp field: @timestamp.
+Click Save data view to Kibana. Screenshot it.
+Step 5. Show total, error and success logs (5 marks)
+Open the menu, then Discover, and pick the logs-* data view.
+Set the time range (top right) to Last 7 days.
+The hit count at the top is the total log count (5). Screenshot it.
+Search response:500. You should see 2 hits (error logs). Screenshot it.
+Search response:200. You should see 3 hits (success logs). Screenshot it.
+
+For an optional chart, go to Visualize Library, Create visualization, Lens, choose a pie chart, and split by response.keyword.
+
+When done, run docker compose down.
+Q10. Monitoring with Prometheus and Grafana (Windows)
+
+Node Exporter is Linux-only, so on Windows you use windows_exporter, which does the same job. We start it on port 9100, so the config matches the question. Dashboard 1860 is for Linux, so you import 20763 instead.
+
+If the lab PC is Linux, use node_exporter and dashboard 1860 as in the first guide.
+
+Downloads
+Prometheus: prometheus.io/download, choose the Windows .zip (windows-amd64).
+windows_exporter: github.com/prometheus-community/windows_exporter/releases, download the .exe for amd64.
+Grafana: grafana.com/grafana/download, choose Windows (the .msi installer, or the standalone .zip if you have no admin rights).
+
+Unzip Prometheus into C:\prometheus and put the exporter .exe in C:\exporter. Rename the exe to windows_exporter.exe for simplicity.
+
+Step 1. Install and start Prometheus (5 marks)
+powershell
+cd C:\prometheus
+.\prometheus.exe --config.file=prometheus.yml
+
+Leave this window open. If Windows Firewall asks, click Allow access. Open http://localhost:9090 in the browser. Screenshot it.
+
+Step 2. Configure prometheus.yml (7 marks)
+
+Stop Prometheus (Ctrl+C), then in a new PowerShell:
+
+powershell
+@'
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: node
+    static_configs:
+      - targets: ['localhost:9100']
+'@ | Set-Content C:\prometheus\prometheus.yml
+
+Start Prometheus again in its own window:
+
+powershell
+cd C:\prometheus
+.\prometheus.exe --config.file=prometheus.yml
+
+Screenshot the file with type C:\prometheus\prometheus.yml.
+
+Step 3. Run the exporter and check targets (5 marks)
+
+In a new PowerShell window:
+
+powershell
+cd C:\exporter
+.\windows_exporter.exe --web.listen-address=":9100"
+
+Open http://localhost:9100/metrics to confirm it prints metrics. Then open http://localhost:9090, go to Status, then Targets. Both prometheus and node should show UP. Screenshot it. Keep all three windows open.
+
+Step 4. Install Grafana and add the data source (5 marks)
+Run the Grafana .msi and finish the install. It starts as a service.
+Open http://localhost:3000 and log in with admin / admin, then set a new password.
+Go to Connections, then Data sources, then Add data source, and choose Prometheus.
+URL: http://localhost:9090
+Click Save & test. It should say success. Screenshot it.
+Step 5. Import the dashboard and show live graphs (8 marks)
+Go to Dashboards, then New, then Import.
+Enter 20763 and click Load.
+Select the Prometheus data source and click Import.
+Wait a minute for data, then set the time range to Last 15 minutes.
+Screenshot the panels for CPU, Memory, Disk and Network.
