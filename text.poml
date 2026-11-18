@@ -1,0 +1,193 @@
+DevOps Practicals Q1 to Q5 (Windows)
+Final steps as performed, including the fixes we needed on the way. Use PowerShell (normal, not admin) unless stated. If your prompt shows C:\WINDOWS\System32, run cd ~ first. Screenshot after every step.
+Before you start
+• Install: Git, JDK 21, Maven, Docker Desktop, Jenkins. Check with git --version, java -version, mvn -version, docker --version.
+• Jenkins and the Docker nginx (Q4) both use port 8080. Stop Jenkins before Q4 with net stop jenkins (admin Command Prompt), start it again with net start jenkins.
+• Replace YourName, you@example.com and YOUR_USER with your real values.
+Q1. Git (30 marks)
+Use Git Bash or PowerShell.
+1. Initialize and configure (4)
+mkdir student-management
+cd student-management
+git init -b main
+git config --global user.name "YourName"
+git config --global user.email "you@example.com"
+git config --list
+2. Create files and commit (5)
+echo "<h1>Home</h1>" > index.html
+echo "body{}" > style.css
+echo "console.log('hi');" > app.js
+git add .
+git commit -m "Initial commit"
+3. Branch feature-login and add a login form (5)
+git checkout -b feature-login
+echo "<form><input type='text'><input type='password'><button>Login</button></form>" >> index.html
+git commit -am "Add login form"
+4. Back to main, modify app.js (4)
+git checkout main
+echo "// main change" >> app.js
+git commit -am "Modify app.js"
+5. Merge feature-login into main (4)
+git merge feature-login -m "Merge feature-login"
+6. Create a conflict, resolve it, show the log (8)
+git checkout -b feature-x
+echo "body{color:red;}" > style.css
+git commit -am "red"
+git checkout main
+echo "body{color:blue;}" > style.css
+git commit -am "blue"
+git merge feature-x
+Expected: CONFLICT (content): Merge conflict in style.css. Open the file with notepad style.css (or nano style.css in Git Bash). It shows:
+<<<<<<< HEAD
+body{color:blue;}
+=======
+body{color:red;}
+>>>>>>> feature-x
+Delete the three marker lines, keep one color line, save, then:
+git add style.css
+git commit -m "Resolve conflict"
+git log --graph --oneline
+Q2. Jenkins Freestyle job (30 marks)
+1. Install, start and log in (6)
+• Open http://localhost:8080. If it does not open, run net start jenkins in an admin Command Prompt and wait 60 seconds.
+• First-time password is in C:\ProgramData\Jenkins\.jenkins\secrets\initialAdminPassword.
+• Click Install suggested plugins, create the admin user, click Start using Jenkins.
+• If the installer says it cannot find Java 21 or 25, select the exact JDK folder, for example C:\Program Files\Java\jdk-21.0.12.1, not the parent Java folder.
+Fix: Source Code Management shows only None. The Git plugin is missing. Go to Manage Jenkins, Plugins, Available plugins, search Git, tick Git, click Install, and tick restart when done. Also install Pipeline here for Q3.
+2. Create the job (4)
+New Item, name java-build-job (exactly this spelling), choose Freestyle project, OK.
+3. Connect a Java project (6)
+Source Code Management, select Git, URL https://github.com/jenkins-docs/simple-java-maven-app, branch */master (use */main if checkout fails). You can use your own repo if it is public and has a pom.xml in the root.
+4. Trigger and build step (7)
+• Build Triggers: tick Poll SCM, schedule H/2 * * * *
+• Build Steps: Add build step, Execute Windows batch command, enter the two lines below (use your own JDK and Maven folders), then Save:
+set JAVA_HOME=C:\Program Files\Java\jdk-21.0.12.1
+"C:\Program Files\apache-maven-3.9.16\bin\mvn.cmd" clean package
+Important: do not skip this step. A job with no build step also says Finished: SUCCESS, but nothing was built.
+5. Run the build and show Console Output (7)
+Build Now, open the latest build, Console Output. The end must show BUILD SUCCESS and Finished: SUCCESS.
+Fixing a failed build (keep both screenshots)
+• 'mvn' is not recognized: Jenkins runs as a service and cannot see your terminal PATH. Use the full paths in the build step as above, or add Maven bin and JAVA_HOME to the System variables and restart Jenkins (net stop jenkins, then net start jenkins).
+• Checkout error: change */master to */main.
+• no POM in this directory: the repo has no pom.xml in its root.
+Q3. CI/CD Pipeline (30 marks)
+Q2 must show BUILD SUCCESS first. Fork jenkins-docs/simple-java-maven-app on GitHub so you can commit to it.
+1. Create the job (4)
+New Item, name cicd-pipeline, choose Pipeline, OK. (If Pipeline is missing, install the Pipeline plugin.)
+2. Jenkinsfile (16)
+In the Pipeline section choose Pipeline script and paste this (replace YOUR_USER, and use main if that is your branch):
+pipeline {
+  agent any
+  triggers { pollSCM('H/2 * * * *') }
+  stages {
+    stage('Checkout') { steps { git branch: 'master', url: 'https://github.com/YOUR_USER/simple-java-maven-app' } }
+    stage('Build')    { steps { bat 'mvn clean compile' } }
+    stage('Test')     { steps { bat 'mvn test' } }
+    stage('Package')  { steps { bat 'mvn package' } }
+    stage('Deploy')   { steps { bat 'if not exist deploy mkdir deploy & copy target\\*.jar deploy\\' } }
+  }
+}
+Notes:
+• \\ is not a comment. In Groovy it produces a single \ for Windows. Keep the double backslashes.
+• This short version works only if Jenkins can see Maven and Java (same as Q2). If a stage says 'mvn' is not recognized, add this block after the triggers line, using your own folders:
+  environment {
+    JAVA_HOME = 'C:\\Program Files\\Java\\jdk-21.0.12.1'
+    PATH = "C:\\Program Files\\apache-maven-3.9.16\\bin;${env.PATH}"
+  }
+3. Run and show Stage View (5)
+Build Now. The Stage View shows five green stages: Checkout, Build, Test, Package, Deploy. Open Workspace, then deploy to show the copied .jar.
+4. Automatic trigger (5)
+On GitHub edit README.md in your fork and commit. Do not click Build Now. Within 2 minutes build #2 starts by itself. Do step 3 first, because polling starts only after the first successful build.
+Q4. Docker Basics (30 marks)
+Start Docker Desktop (wait for Engine running). Stop Jenkins first: net stop jenkins (admin Command Prompt). Then use a normal PowerShell.
+1. Pull nginx and run on port 8080 (6)
+docker pull nginx
+docker run -d --name web1 -p 8080:80 nginx
+Browser: http://localhost:8080 shows Welcome to nginx.
+2. Create the web app (5)
+cd ~
+mkdir myapp
+cd myapp
+Set-Content index.html "<h1>Hello Docker</h1>"
+type index.html
+If you get Access denied on mkdir, you are inside C:\WINDOWS\System32. Run cd ~ first.
+3. Dockerfile (8)
+Set-Content Dockerfile "FROM nginx:alpine","COPY index.html /usr/share/nginx/html/index.html"
+type Dockerfile
+4. Build my-web-app:v1 and run on port 8081 (6)
+docker build -t my-web-app:v1 .
+docker run -d --name web2 -p 8081:80 my-web-app:v1
+Browser: http://localhost:8081 shows Hello Docker.
+5. Management commands (5, compulsory)
+docker ps
+docker images
+docker logs web2
+docker stop web1 web2
+docker rm web1 web2
+docker ps -a
+Run docker ps and docker images before stop and rm.
+Q5. Docker Compose (30 marks)
+Normal PowerShell, Docker Desktop running.
+1. Create the project (5)
+cd ~
+mkdir compose-app
+cd compose-app
+app.py
+@'
+from flask import Flask
+import mysql.connector
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    c = mysql.connector.connect(host='db', user='root', password='root', database='testdb')
+    cur = c.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS users(id INT PRIMARY KEY, name VARCHAR(50))")
+    cur.execute("INSERT IGNORE INTO users VALUES (1,'Alice'),(2,'Bob')")
+    c.commit()
+    cur.execute("SELECT * FROM users")
+    return str(cur.fetchall())
+
+app.run(host='0.0.0.0', port=80)
+'@ | Set-Content app.py
+Dockerfile
+@'
+FROM python:3.11-slim
+RUN pip install flask mysql-connector-python
+COPY app.py .
+CMD ["python", "app.py"]
+'@ | Set-Content Dockerfile
+2. docker-compose.yml (12)
+@'
+services:
+  web:
+    build: .
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: testdb
+    volumes:
+      - db_data:/var/lib/mysql
+volumes:
+  db_data:
+'@ | Set-Content docker-compose.yml
+dir
+3. Run and verify both containers (5)
+docker compose up -d
+docker compose ps
+4. Verify the app reads from the database (5)
+Wait about 30 seconds for MySQL, then open http://localhost:8000. You see [(1, 'Alice'), (2, 'Bob')]. If you get an error, wait and refresh.
+5. Scale down, logs, clean up (3)
+docker compose up -d --scale web=0
+docker compose logs
+docker compose down -v
+Quick troubleshooting
+• Port already in use: stop Jenkins for Q4, or change the left side of the port mapping (for example 8001:80).
+• Docker cannot connect: open Docker Desktop and wait for Engine running.
+• Container name already in use: docker rm -f web1 web2.
+• Jenkins job fails on Maven: use full paths in the build step (Q2) or the environment block (Q3).
