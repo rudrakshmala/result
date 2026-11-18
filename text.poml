@@ -592,3 +592,36 @@ Enter 20763 and click Load.
 Select the Prometheus data source and click Import.
 Wait a minute for data, then set the time range to Last 15 minutes.
 Screenshot the panels for CPU, Memory, Disk and Network.
+
+
+
+viva 
+1. Merge vs rebase
+Both combine work from two branches. Merge keeps both histories and adds one extra “merge” commit, so you can see where the branches joined. Rebase moves your commits to the end of the other branch, so the history looks like one straight line. Merge keeps the full story. Rebase gives a tidy story.
+
+2. Jenkinsfile
+It is a text file where you write the steps Jenkins should follow: build the code, test it, then deploy it. Because it lives with your code, you can save and share it like any other file. In our practical it had five stages: Checkout, Build, Test, Package and Deploy.
+
+3. Image vs container
+An image is a ready-made package with your app and everything it needs. It just sits there. A container is what you get when you run that image. One image can start many containers, like one recipe making many cakes.
+
+4. docker-compose.yml
+When your app needs several containers (a web app plus a database), you would normally start each one by hand. This file lists them all, so docker compose up -d starts everything together. In Q5 it started the web app and MySQL.
+
+5. CI vs CD
+CI (Continuous Integration) means every time someone changes the code, it is built and tested automatically. CD (Continuous Delivery or Deployment) means that after the tests pass, the app is released automatically. CI checks the code, CD ships it.
+
+6. Ad-hoc vs playbook
+Both are ways to give Ansible work. An ad-hoc command does one quick thing, like ansible all -m ping. A playbook is a YAML file with many tasks in order (install Apache, start it, copy a page), and you can run it again and again.
+
+7. Pod vs container
+A container runs your app. Kubernetes doesn’t manage containers directly. It puts them inside a Pod, the smallest unit it works with. Most of the time one Pod holds one container.
+
+8. Deployment vs service
+A Deployment keeps the right number of Pods running, replaces broken ones, and handles scaling and updates. Pods get new addresses when they restart, so a Service gives them one fixed address that never changes. Users talk to the Service, and it passes the traffic to the Pods.
+
+9. ELK stack
+It is three tools that work as a team for logs. Logstash collects the logs and cleans them up. Elasticsearch stores them so you can search quickly. Kibana shows them as charts and search screens. In Q9 we used it to count 200 and 500 status logs.
+
+10. Prometheus vs Grafana
+Prometheus collects numbers about your system (CPU, memory, disk) every few seconds, stores them, and can raise alerts. Grafana only displays those numbers as nice graphs. Prometheus gathers the data and Grafana shows it.
