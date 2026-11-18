@@ -45,7 +45,7 @@ Delete the three marker lines, keep one color line, save, then:
 git add style.css
 git commit -m "Resolve conflict"
 git log --graph --oneline
-Q2. Jenkins Freestyle job (30 marks)
+            Q2. Jenkins Freestyle job (30 marks)
 1. Install, start and log in (6)
 • Open http://localhost:8080. If it does not open, run net start jenkins in an admin Command Prompt and wait 60 seconds.
 • First-time password is in C:\ProgramData\Jenkins\.jenkins\secrets\initialAdminPassword.
@@ -68,7 +68,7 @@ Fixing a failed build (keep both screenshots)
 • 'mvn' is not recognized: Jenkins runs as a service and cannot see your terminal PATH. Use the full paths in the build step as above, or add Maven bin and JAVA_HOME to the System variables and restart Jenkins (net stop jenkins, then net start jenkins).
 • Checkout error: change */master to */main.
 • no POM in this directory: the repo has no pom.xml in its root.
-Q3. CI/CD Pipeline (30 marks)
+                      Q3. CI/CD Pipeline (30 marks)
 Q2 must show BUILD SUCCESS first. Fork jenkins-docs/simple-java-maven-app on GitHub so you can commit to it.
 1. Create the job (4)
 New Item, name cicd-pipeline, choose Pipeline, OK. (If Pipeline is missing, install the Pipeline plugin.)
@@ -124,7 +124,7 @@ docker stop web1 web2
 docker rm web1 web2
 docker ps -a
 Run docker ps and docker images before stop and rm.
-Q5. Docker Compose (30 marks)
+                                       Q5. Docker Compose (30 marks)
 Normal PowerShell, Docker Desktop running.
 1. Create the project (5)
 cd ~
@@ -189,6 +189,11 @@ Quick troubleshooting
 • Docker cannot connect: open Docker Desktop and wait for Engine running.
 • Container name already in use: docker rm -f web1 web2.
 • Jenkins job fails on Maven: use full paths in the build step (Q2) or the environment block (Q3).
+
+
+
+
+
 Kubernetes Basics (Windows, minikube)
 Step 0. Install Ubuntu (once)
 Open PowerShell as Administrator and run wsl --install -d Ubuntu.
@@ -265,6 +270,9 @@ Run the playbook again:
 bash
 ansible-playbook -i inventory.ini install-packages.yml --ask-become-pass
 The recap should show changed=0. Screenshot it. This proves idempotency.
+
+
+
 
 Use a normal PowerShell with Docker Desktop on Engine running. If your prompt shows System32, run cd ~ first.
 
@@ -344,6 +352,10 @@ kubectl describe pod my-pod
 
 Screenshot each output.
 
+
+
+
+
 Q8. Scaling, Rolling Updates and Rollbacks (Windows)
 
 This uses the same minikube cluster as Q7. Use PowerShell with Docker Desktop running.
@@ -395,6 +407,11 @@ kubectl rollout status deployment/my-app
 kubectl describe deployment my-app | Select-String Image
 
 The last line should show Image: nginx:1.25. Screenshot it. PowerShell has no grep, so Select-String does the same job.
+
+
+
+
+
 Q9. Centralized Logging with ELK (Windows)
 
 ELK needs about 4 GB of free RAM. Stop minikube first with minikube stop, and close heavy apps. Use a normal PowerShell with Docker Desktop on Engine running.
@@ -502,6 +519,12 @@ Search response:200. You should see 3 hits (success logs). Screenshot it.
 For an optional chart, go to Visualize Library, Create visualization, Lens, choose a pie chart, and split by response.keyword.
 
 When done, run docker compose down.
+
+
+
+
+
+
 Q10. Monitoring with Prometheus and Grafana (Windows)
 
 Node Exporter is Linux-only, so on Windows you use windows_exporter, which does the same job. We start it on port 9100, so the config matches the question. Dashboard 1860 is for Linux, so you import 20763 instead.
